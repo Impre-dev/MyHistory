@@ -62,7 +62,9 @@ function escapeLike(q) {
 
 function domainOf(url) {
   try {
-    return new URL(url).hostname.replace(/^www\./, '');
+    // www ET m retirés — même nettoyage que normalizeKey : mobile/desktop
+    // d'un même site partagent couleur, favicon canon et identité
+    return new URL(url).hostname.replace(/^(www|m)\./, '');
   } catch {
     return url;
   }
