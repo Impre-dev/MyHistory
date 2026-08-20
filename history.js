@@ -134,12 +134,14 @@ function dayLabel(date) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** Ouvre une URL dans un onglet de la fenêtre browser la plus récente */
-function openInTab(url) {
+/** Ouvre une URL dans un onglet de la fenêtre browser la plus récente.
+ *  focus=true → switch sur le nouvel onglet (clic gauche), false → arrière-plan
+ *  (middle-click). TabPriority range le tab dans son cluster domaine ensuite. */
+function openInTab(url, focus = false) {
   const win = Services.wm.getMostRecentWindow('navigator:browser');
   if (!win) return;
-  win.gBrowser.addTab(url, { triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal() });
-  win.focus();
+  const tab = win.gBrowser.addTab(url, { triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal() });
+  if (focus) win.gBrowser.selectedTab = tab;
 }
 
 /* ═══════════════ SQL Places (read-only) ═══════════════ */
@@ -296,7 +298,7 @@ function buildCard(entry) {
   const card = el('article', 'hy-card');
   card.dataset.url = entry.url;
   // Groupe de dédup : toutes les URLs exactes fusionnées dans cette carte
-  const group = { urls: [entry.url], hasRealTitle: !!entry.title, visits: entry.visits, badgeEl: null, titleEl: null };
+  const group = { urls: [entry.url], hasRealTitle: !!entry.title, visits: entry.visits, titleEl: null };
   card.__hy = group;
   card.dataset.urls = JSON.stringify(group.urls);
 
@@ -306,11 +308,6 @@ function buildCard(entry) {
   // Alpha 0.5 : la couleur du domaine laisse passer le wallpaper derrière (glass)
   fallback.style.background = `linear-gradient(135deg, hsl(${hue} 42% 22% / 0.5), hsl(${(hue + 40) % 360} 38% 14% / 0.5))`;
   thumb.append(fallback);
-
-  if (entry.visits > 1) {
-    group.badgeEl = el('span', 'hy-visits', '×' + entry.visits);
-    thumb.append(group.badgeEl);
-  }
 
   // 1. Thumbnail PageThumbs si présent (onerror = fallback, event-driven)
   const shot = el('img', 'hy-shot');
@@ -323,21 +320,7 @@ function buildCard(entry) {
   //    (chaînage onerror = event-driven, chaque échec tente le suivant)
   decorateFallback(fallback, entry.url, domain);
 
-  /* ── Poubelle (hover, haut-gauche) — seule action : le clic ouvre déjà ── */
-  const forget = el('button', 'hy-forget');
-  forget.title = 'Oublier cette entrée';
-  forget.innerHTML =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>' +
-    '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
-  forget.addEventListener('click', (e) => {
-    e.stopPropagation();
-    // La page n'écrit JAMAIS dans Places → délégation au .uc.js via obs
-    // Suppression GROUPÉE : toutes les URLs exactes fusionnées dans la carte
-    Services.obs.notifyObservers(null, 'myhistory-delete', JSON.stringify(group.urls));
-    toast('Entrée retirée de l’historique');
-  });
-  thumb.append(forget);
+  /* Aucune action au hover — le clic ouvre, la suppression passe par about:history natif */
 
   /* ── Meta ── */
   const meta = el('div', 'hy-meta');
@@ -348,9 +331,18 @@ function buildCard(entry) {
   metaTxt.append(title, sub);
   meta.append(metaTxt);
 
-  card.addEventListener('click', () => openInTab(entry.url));
+  // Clic gauche : ouvre + switch. Middle-click : ouvre en arrière-plan.
+  card.addEventListener('click', (e) => {
+    if (e.button !== 0) return;
+    openInTab(entry.url, true);
+  });
+  card.addEventListener('auxclick', (e) => {
+    if (e.button !== 1) return;
+    e.preventDefault(); // pas d'autoscroll
+    openInTab(entry.url, false);
+  });
   card.addEventListener('keyup', (e) => {
-    if (e.key === 'Enter') openInTab(entry.url);
+    if (e.key === 'Enter') openInTab(entry.url, true);
   });
   card.tabIndex = 0;
 
@@ -358,22 +350,15 @@ function buildCard(entry) {
   return card;
 }
 
-/** Fusionne un doublon normalisé dans sa carte existante (visites + titre + badge) */
+/** Fusionne un doublon normalisé dans sa carte existante (visites + titre) */
 function mergeDuplicate(prevCard, r) {
   const g = prevCard.__hy;
   g.urls.push(r.url);
   prevCard.dataset.urls = JSON.stringify(g.urls);
-  g.visits += r.visits;
+  g.visits += r.visits; // toujours comptées dans les stats du jour
   if (r.title && !g.hasRealTitle) {
     g.hasRealTitle = true;
     g.titleEl.textContent = r.title;
-  }
-  if (g.visits > 1) {
-    if (!g.badgeEl) {
-      g.badgeEl = el('span', 'hy-visits');
-      prevCard.querySelector('.hy-thumb').prepend(g.badgeEl);
-    }
-    g.badgeEl.textContent = '×' + g.visits;
   }
 }
 

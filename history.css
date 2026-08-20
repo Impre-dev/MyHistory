@@ -257,57 +257,6 @@ body::before {
   border-radius: 10px;
 }
 
-.hy-visits {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--hy-white);
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(6px);
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-/* Poubelle au hover — haut-gauche de la vignette, seule action (le clic ouvre déjà) */
-.hy-forget {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  background: rgba(10, 16, 28, 0.72);
-  color: var(--hy-text);
-  border: 1px solid var(--hy-glass-border);
-  border-radius: 8px;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  opacity: 0;
-  transform: translateY(-4px);
-  transition:
-    opacity 0.15s,
-    transform 0.15s,
-    border-color 0.15s,
-    color 0.15s;
-}
-.hy-card:hover .hy-forget {
-  opacity: 1;
-  transform: none;
-}
-.hy-forget:hover {
-  border-color: #b63b39;
-  color: #e5736f;
-}
-.hy-forget svg {
-  width: 14px;
-  height: 14px;
-}
-
 .hy-meta {
   padding: 7px 9px 8px;
 }
