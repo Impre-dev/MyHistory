@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>MyHistory</title>
+    <link rel="icon" href="resources/MyHistory.png" />
+    <link rel="stylesheet" href="history.css" />
+  </head>
+  <body>
+    <main id="myhistory">
+      <!-- Header sticky : identité + recherche + filtres temporels -->
+      <header class="hy-header">
+        <div class="hy-brand">
+          <img class="hy-logo" src="resources/MyHistory.png" alt="" />
+          <h1>MyHistory</h1>
+        </div>
+        <input id="hy-search" type="text" placeholder="Rechercher titre ou URL…" autocomplete="off" spellcheck="false" />
+        <nav class="hy-chips" id="hy-chips">
+          <button class="hy-chip" data-filter="today">Aujourd'hui</button>
+          <button class="hy-chip" data-filter="yesterday">Hier</button>
+          <button class="hy-chip" data-filter="week">7 jours</button>
+          <button class="hy-chip" data-filter="month">30 jours</button>
+          <button class="hy-chip is-active" data-filter="all">Tous</button>
+        </nav>
+        <span id="hy-count" class="hy-count" hidden></span>
+      </header>
+
+      <!-- Timeline : sections par jour rendues par history.js -->
+      <div id="hy-timeline"></div>
+
+      <!-- Sentinel infinite scroll + états -->
+      <div id="hy-sentinel" class="hy-sentinel" hidden></div>
+      <div id="hy-empty" class="hy-empty" hidden>
+        <div class="hy-empty-glyph">⌛</div>
+        <p>Aucune visite trouvée.</p>
+        <p class="hy-empty-sub">Modifie la recherche ou élargis la période.</p>
+      </div>
+      <p id="hy-end" class="hy-end" hidden>Fin de l'historique — vous voilà au début des temps. 🏁</p>
+
+      <span id="hy-toast" class="hy-toast" hidden></span>
+    </main>
+    <script src="history.js"></script>
+  </body>
+</html>
