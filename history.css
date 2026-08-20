@@ -1,7 +1,7 @@
 /* MyHistory — history.css
  * Langage visuel MyHub (glassmorphism, accent #2B7CE9, radius 14) mais page
  * PLEINE : contenu large (1600px), grid dense de cartes, header sticky.
- * Fond : dégradé bleu nuit (pas de wallpaper — pas de dépendance asset).
+ * Fond : wallpaper resources/bg.png + scrim de lisibilité (pattern MyHub).
  */
 
 :root {
@@ -13,6 +13,7 @@
   --hy-text-dim: #9fb4d0;
   --hy-glass: rgba(255, 255, 255, 0.05);
   --hy-glass-border: rgba(255, 255, 255, 0.12);
+  --hy-scrim: rgba(5, 8, 14, 0.35); /* voile de lisibilité au-dessus du wallpaper */
   --hy-radius: 14px;
   --hy-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
@@ -23,6 +24,7 @@
     --hy-text-dim: #5a6e8c;
     --hy-glass: rgba(255, 255, 255, 0.55);
     --hy-glass-border: rgba(26, 54, 93, 0.12);
+    --hy-scrim: rgba(0, 0, 0, 0.13);
     --hy-shadow: 0 8px 32px rgba(26, 54, 93, 0.15);
   }
 }
@@ -43,16 +45,17 @@ body {
   min-height: 100vh;
 }
 body {
-  background:
-    radial-gradient(1200px 700px at 80% -10%, rgba(43, 124, 233, 0.22), transparent 60%),
-    radial-gradient(900px 600px at 8% 110%, rgba(26, 54, 93, 0.55), transparent 65%), #0b1220;
+  background: url('resources/bg.png') center / cover no-repeat fixed;
 }
-@media (prefers-color-scheme: light) {
-  body {
-    background:
-      radial-gradient(1200px 700px at 80% -10%, rgba(43, 124, 233, 0.16), transparent 60%),
-      radial-gradient(900px 600px at 8% 110%, rgba(26, 54, 93, 0.1), transparent 65%), #e9eff7;
-  }
+/* Scrim de lisibilité au-dessus du wallpaper, sous le contenu (tunable) */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--hy-scrim);
+  z-index: -1;
+  pointer-events: none;
+  backdrop-filter: blur(23px);
 }
 
 #myhistory {
@@ -177,8 +180,8 @@ body {
 
 .hy-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(236px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); /* vignettes 2× plus petites */
+  gap: 10px;
 }
 
 /* ── Carte ──────────────────────────────────────────────── */
@@ -212,13 +215,7 @@ body {
 .hy-thumb {
   position: relative;
   aspect-ratio: 16 / 10;
-  background: #10192b; /* socle sombre sous vignette/fallback */
   overflow: hidden;
-}
-@media (prefers-color-scheme: light) {
-  .hy-thumb {
-    background: #dfe8f4;
-  }
 }
 .hy-shot {
   position: absolute;
@@ -314,19 +311,19 @@ body {
 .hy-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px 12px;
+  gap: 8px;
+  padding: 7px 9px 8px;
 }
 .hy-meta img {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   object-fit: contain;
   border-radius: 3px;
   flex-shrink: 0;
 }
 .hy-meta .hy-dot {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 5px;
   flex-shrink: 0;
 }
@@ -334,14 +331,14 @@ body {
   min-width: 0;
 }
 .hy-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .hy-sub {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--hy-text-dim);
   white-space: nowrap;
   overflow: hidden;

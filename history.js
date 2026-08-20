@@ -256,7 +256,8 @@ function buildCard(entry) {
   /* ── Vignette + cascade de fallbacks ── */
   const thumb = el('div', 'hy-thumb');
   const fallback = el('div', 'hy-fallback');
-  fallback.style.background = `linear-gradient(135deg, hsl(${hue} 42% 22%), hsl(${(hue + 40) % 360} 38% 14%))`;
+  // Alpha 0.5 : la couleur du domaine laisse passer le wallpaper derrière (glass)
+  fallback.style.background = `linear-gradient(135deg, hsl(${hue} 42% 22% / 0.5), hsl(${(hue + 40) % 360} 38% 14% / 0.5))`;
   thumb.append(fallback);
 
   if (entry.visits > 1) thumb.append(el('span', 'hy-visits', '×' + entry.visits));
