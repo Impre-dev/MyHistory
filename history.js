@@ -272,32 +272,20 @@ function buildCard(entry) {
   // 2. Favicon : canon CustomFavicon → Places → tuile lettre (async, non bloquant)
   decorateFallback(fallback, entry.url, domain, hue);
 
-  /* ── Barre d'actions hover ── */
-  const actions = el('div', 'hy-actions');
-  const bOpen = el('button', null, 'Ouvrir');
-  const bCopy = el('button', null, 'Copier');
-  const bForget = el('button', null, 'Oublier');
-  bOpen.addEventListener('click', (e) => {
-    e.stopPropagation();
-    openInTab(entry.url);
-  });
-  bCopy.addEventListener('click', async (e) => {
-    e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(entry.url);
-      toast('URL copiée');
-    } catch {
-      toast('Copie impossible', true);
-    }
-  });
-  bForget.addEventListener('click', (e) => {
+  /* ── Poubelle (hover, haut-gauche) — seule action : le clic ouvre déjà ── */
+  const forget = el('button', 'hy-forget');
+  forget.title = 'Oublier cette entrée';
+  forget.innerHTML =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>' +
+    '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+  forget.addEventListener('click', (e) => {
     e.stopPropagation();
     // La page n'écrit JAMAIS dans Places → délégation au .uc.js via obs
     Services.obs.notifyObservers(null, 'myhistory-delete', JSON.stringify([entry.url]));
     toast('Entrée retirée de l’historique');
   });
-  actions.append(bOpen, bCopy, bForget);
-  thumb.append(actions);
+  thumb.append(forget);
 
   /* ── Meta ── */
   const meta = el('div', 'hy-meta');
@@ -305,9 +293,7 @@ function buildCard(entry) {
   const title = el('div', 'hy-title', entry.title);
   const sub = el('div', 'hy-sub', domain + ' · ' + timeFmt.format(date));
   metaTxt.append(title, sub);
-  meta.append(el('span', 'hy-dot'), metaTxt);
-  meta.querySelector('.hy-dot').style.background = `hsl(${hue} 55% 45%)`;
-  decorateMetaIcon(meta, entry.url, domain, hue);
+  meta.append(metaTxt);
 
   card.addEventListener('click', () => openInTab(entry.url));
   card.addEventListener('keyup', (e) => {
@@ -328,19 +314,6 @@ async function decorateFallback(fallback, url, domain, hue) {
   } else {
     fallback.append(el('span', 'hy-letter', (domain[0] || '?').toUpperCase()));
   }
-}
-
-async function decorateMetaIcon(meta, url, domain, hue) {
-  const dot = meta.querySelector('.hy-dot');
-  const icon = Favicon.canonFor(domain) || (await Favicon.placesFor(url));
-  if (!icon) return; // le dot teinté reste
-  dot.replaceWith(
-    (() => {
-      const img = el('img');
-      img.src = icon;
-      return img;
-    })(),
-  );
 }
 
 /* ═══════════════ Chargement ═══════════════ */

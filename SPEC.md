@@ -95,7 +95,7 @@ largeur de contenu étendue, pas de contrainte de panel).
 | Version | Contenu |
 |---|---|
 | **V1.0** | Page + SQL + groupement par jour + recherche + fallback favicons + hotkey Ctrl+Shift+H |
-| **V1.1** | Harvester vignettes (`addTabsProgressListener` → `PageThumbs.captureAndStoreIfStale`) + live refresh de la page ouverte via `Services.obs` |
+| ~~**V1.1**~~ | ~~Harvester vignettes~~ — **ANNULÉ** (décision 2026-08-20) : poids disque (30-120 Mo à l'échelle de l'historique), capture désactivée sur le profil (`browser.pagethumbnails.capturing_disabled = true`), et favicon + couleur domaine plus identifiables que des captures à 118px. La cascade `moz-page-thumb://` reste **opportuniste** : tout thumbnail existant s'affiche gratuitement |
 | **V1.2** | Suppression (entrée / journée), toggle densité (vignettes / compact / liste) |
 | **V2** | Vue fréquence (sites les plus visités), stats par jour, contrat MyHub (`preferences.json` + icône `resources/MyHistory.png`) |
 

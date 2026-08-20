@@ -270,62 +270,46 @@ body::before {
   border-radius: 999px;
 }
 
-/* Barre d'actions au hover */
-.hy-actions {
+/* Poubelle au hover — haut-gauche de la vignette, seule action (le clic ouvre déjà) */
+.hy-forget {
   position: absolute;
+  top: 8px;
   left: 8px;
-  right: 8px;
-  bottom: 8px;
+  width: 26px;
+  height: 26px;
   display: flex;
-  gap: 6px;
+  align-items: center;
   justify-content: center;
-  opacity: 0;
-  transform: translateY(6px);
-  transition:
-    opacity 0.15s,
-    transform 0.15s;
-}
-.hy-card:hover .hy-actions {
-  opacity: 1;
-  transform: none;
-}
-.hy-actions button {
-  background: rgba(10, 16, 28, 0.82);
+  padding: 0;
+  background: rgba(10, 16, 28, 0.72);
   color: var(--hy-text);
   border: 1px solid var(--hy-glass-border);
   border-radius: 8px;
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 600;
   cursor: pointer;
   backdrop-filter: blur(8px);
+  opacity: 0;
+  transform: translateY(-4px);
   transition:
+    opacity 0.15s,
+    transform 0.15s,
     border-color 0.15s,
     color 0.15s;
 }
-.hy-actions button:hover {
-  border-color: var(--hy-accent);
-  color: var(--hy-accent);
+.hy-card:hover .hy-forget {
+  opacity: 1;
+  transform: none;
+}
+.hy-forget:hover {
+  border-color: #b63b39;
+  color: #e5736f;
+}
+.hy-forget svg {
+  width: 14px;
+  height: 14px;
 }
 
 .hy-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   padding: 7px 9px 8px;
-}
-.hy-meta img {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  border-radius: 3px;
-  flex-shrink: 0;
-}
-.hy-meta .hy-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 5px;
-  flex-shrink: 0;
 }
 .hy-meta-txt {
   min-width: 0;
