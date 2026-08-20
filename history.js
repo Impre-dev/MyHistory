@@ -269,8 +269,9 @@ function buildCard(entry) {
   shot.onerror = () => shot.remove();
   thumb.prepend(shot);
 
-  // 2. Favicon : canon CustomFavicon → Places → tuile lettre (async, non bloquant)
-  decorateFallback(fallback, entry.url, domain, hue);
+  // 2. Favicon : canon CustomFavicon → Places → Google S2 → tuile lettre
+  //    (chaînage onerror = event-driven, chaque échec tente le suivant)
+  decorateFallback(fallback, entry.url, domain);
 
   /* ── Poubelle (hover, haut-gauche) — seule action : le clic ouvre déjà ── */
   const forget = el('button', 'hy-forget');
@@ -305,15 +306,24 @@ function buildCard(entry) {
   return card;
 }
 
-async function decorateFallback(fallback, url, domain, hue) {
-  const icon = Favicon.canonFor(domain) || (await Favicon.placesFor(url));
-  if (icon) {
-    const img = el('img');
-    img.src = icon;
-    fallback.append(img);
-  } else {
-    fallback.append(el('span', 'hy-letter', (domain[0] || '?').toUpperCase()));
-  }
+async function decorateFallback(fallback, url, domain) {
+  // Cascade de candidats — CustomFavicon prioritaire, Google S2 en filet de secours réseau
+  const candidates = [];
+  const canon = Favicon.canonFor(domain);
+  if (canon) candidates.push(canon);
+  const places = await Favicon.placesFor(url);
+  if (places) candidates.push(places);
+  candidates.push('https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64');
+
+  let i = 0;
+  const img = el('img');
+  img.addEventListener('error', () => {
+    i++;
+    if (i < candidates.length) img.src = candidates[i];
+    else img.replaceWith(el('span', 'hy-letter', (domain[0] || '?').toUpperCase()));
+  });
+  img.src = candidates[i];
+  fallback.append(img);
 }
 
 /* ═══════════════ Chargement ═══════════════ */
