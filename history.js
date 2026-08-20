@@ -29,6 +29,7 @@ const state = {
   busy: false,
   done: false,
   loadedUrls: new Set(), // anti-doublon entre pages SQL
+  dedup: new Map(), // clé normalisée → carte (fusion des URLs équivalentes)
   daySections: new Map(), // dayKey → { section, grid, sites, visits }
 };
 
@@ -62,6 +63,46 @@ function escapeLike(q) {
 function domainOf(url) {
   try {
     return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+/** Clé de dédup — la même ressource sous plusieurs URLs exactes = une carte.
+ *  YouTube : la vidéo est définie par v= (list/index/t/pp = contexte, ignorés).
+ *  Générique : host sans www/m + path + params triés sans trackers. */
+const TRACK_PARAMS = new Set([
+  't',
+  'si',
+  'pp',
+  'list',
+  'index',
+  'feature',
+  'start',
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term',
+  'fbclid',
+  'gclid',
+  'ref',
+  'referrer',
+]);
+
+function normalizeKey(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^(www|m)\./, '');
+    if ((host === 'youtube.com' || host === 'youtu.be') && u.pathname === '/watch') {
+      return 'yt:watch:' + (u.searchParams.get('v') || u.pathname);
+    }
+    const params = [...u.searchParams.entries()]
+      .filter(([k]) => !TRACK_PARAMS.has(k))
+      .sort()
+      .map(([k, v]) => k + '=' + v)
+      .join('&');
+    return host + u.pathname + (params ? '?' + params : '');
   } catch {
     return url;
   }
@@ -161,7 +202,7 @@ async function fetchPage() {
     out.push({
       rowId: row.getResultByName('rowid'),
       url: row.getResultByName('url'),
-      title: row.getResultByName('title') || row.getResultByName('url'),
+      title: row.getResultByName('title'), // null possible — fallback domaine au rendu
       lastVisit: row.getResultByName('lastVisit'),
       visits: row.getResultByName('visits'),
     });
@@ -252,6 +293,10 @@ function buildCard(entry) {
 
   const card = el('article', 'hy-card');
   card.dataset.url = entry.url;
+  // Groupe de dédup : toutes les URLs exactes fusionnées dans cette carte
+  const group = { urls: [entry.url], hasRealTitle: !!entry.title, visits: entry.visits, badgeEl: null, titleEl: null };
+  card.__hy = group;
+  card.dataset.urls = JSON.stringify(group.urls);
 
   /* ── Vignette + cascade de fallbacks ── */
   const thumb = el('div', 'hy-thumb');
@@ -260,7 +305,10 @@ function buildCard(entry) {
   fallback.style.background = `linear-gradient(135deg, hsl(${hue} 42% 22% / 0.5), hsl(${(hue + 40) % 360} 38% 14% / 0.5))`;
   thumb.append(fallback);
 
-  if (entry.visits > 1) thumb.append(el('span', 'hy-visits', '×' + entry.visits));
+  if (entry.visits > 1) {
+    group.badgeEl = el('span', 'hy-visits', '×' + entry.visits);
+    thumb.append(group.badgeEl);
+  }
 
   // 1. Thumbnail PageThumbs si présent (onerror = fallback, event-driven)
   const shot = el('img', 'hy-shot');
@@ -283,7 +331,8 @@ function buildCard(entry) {
   forget.addEventListener('click', (e) => {
     e.stopPropagation();
     // La page n'écrit JAMAIS dans Places → délégation au .uc.js via obs
-    Services.obs.notifyObservers(null, 'myhistory-delete', JSON.stringify([entry.url]));
+    // Suppression GROUPÉE : toutes les URLs exactes fusionnées dans la carte
+    Services.obs.notifyObservers(null, 'myhistory-delete', JSON.stringify(group.urls));
     toast('Entrée retirée de l’historique');
   });
   thumb.append(forget);
@@ -291,7 +340,8 @@ function buildCard(entry) {
   /* ── Meta ── */
   const meta = el('div', 'hy-meta');
   const metaTxt = el('div', 'hy-meta-txt');
-  const title = el('div', 'hy-title', entry.title);
+  const title = el('div', 'hy-title', entry.title || domain); // fallback domaine, jamais l'URL brute
+  group.titleEl = title;
   const sub = el('div', 'hy-sub', domain + ' · ' + timeFmt.format(date));
   metaTxt.append(title, sub);
   meta.append(metaTxt);
@@ -304,6 +354,25 @@ function buildCard(entry) {
 
   card.append(thumb, meta);
   return card;
+}
+
+/** Fusionne un doublon normalisé dans sa carte existante (visites + titre + badge) */
+function mergeDuplicate(prevCard, r) {
+  const g = prevCard.__hy;
+  g.urls.push(r.url);
+  prevCard.dataset.urls = JSON.stringify(g.urls);
+  g.visits += r.visits;
+  if (r.title && !g.hasRealTitle) {
+    g.hasRealTitle = true;
+    g.titleEl.textContent = r.title;
+  }
+  if (g.visits > 1) {
+    if (!g.badgeEl) {
+      g.badgeEl = el('span', 'hy-visits');
+      prevCard.querySelector('.hy-thumb').prepend(g.badgeEl);
+    }
+    g.badgeEl.textContent = '×' + g.visits;
+  }
 }
 
 async function decorateFallback(fallback, url, domain) {
@@ -340,6 +409,7 @@ function clearAll() {
   document.getElementById('hy-end').hidden = true;
   state.daySections.clear();
   state.loadedUrls.clear();
+  state.dedup.clear();
   state.lastVisitDate = null;
   state.lastRowId = null;
   state.done = false;
@@ -373,11 +443,30 @@ async function loadMore() {
     state.loadedUrls.add(r.url);
     const date = new Date(r.lastVisit / 1000);
     const day = getDaySection(date);
-    day.grid.append(buildCard(r));
+
+    // Dédup : URL équivalente déjà affichée → fusion dans la carte existante
+    const key = normalizeKey(r.url);
+    const prev = state.dedup.get(key);
+    if (prev) {
+      mergeDuplicate(prev, r);
+      day.visits += r.visits; // visites comptées sur leur jour réel
+      refreshDayStats(day);
+      continue;
+    }
+
+    const card = buildCard(r);
+    state.dedup.set(key, card);
+    day.grid.append(card);
     day.sites++;
     day.visits += r.visits;
     refreshDayStats(day);
     added++;
+  }
+
+  // Page entière de doublons fusionnés : enchaîner (sinon l'IO ne re-fire pas)
+  if (added === 0 && rows.length > 0) {
+    state.busy = false;
+    return loadMore();
   }
 
   const last = rows[rows.length - 1];
@@ -443,7 +532,12 @@ function wireEvents() {
         }
         const set = new Set(urls);
         for (const card of document.querySelectorAll('.hy-card')) {
-          if (set.has(card.dataset.url)) card.remove();
+          // Match par groupe : toute URL exacte fusionnée dans la carte la retire
+          let group = [];
+          try {
+            group = JSON.parse(card.dataset.urls || '[]');
+          } catch {}
+          if (set.has(card.dataset.url) || group.some((u) => set.has(u))) card.remove();
         }
       },
     },
